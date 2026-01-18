@@ -1,6 +1,5 @@
 # Dependencies
 node_modules/
-package-lock.json
 yarn.lock
 
 # Testing
@@ -52,7 +51,7 @@ reports/
 *.html
 
 # Docker
-.dockerignore
+# .dockerignore should be committed
 
 # Kubernetes
 *.kubeconfig

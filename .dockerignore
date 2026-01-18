@@ -1,0 +1,46 @@
+# Dependencies
+node_modules/
+npm-debug.log
+yarn-error.log
+
+# Testing
+coverage/
+*.test.js
+tests/
+__tests__/
+.nyc_output/
+
+# Development
+.git/
+.gitignore
+.env
+.env.local
+.env.*.local
+*.log
+
+# CI/CD
+.github/
+.gitlab-ci.yml
+.travis.yml
+azure-pipelines.yml
+
+# Documentation
+README.md
+LICENSE
+CHANGELOG.md
+docs/
+*.md
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.DS_Store
+
+# Build artifacts
+dist/
+build/
+tmp/
+temp/
