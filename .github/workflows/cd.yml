@@ -31,6 +31,12 @@ jobs:
         run: |
           sed -i "s|<DOCKERHUB_USERNAME>|${{ secrets.DOCKERHUB_USERNAME }}|g" k8s/deployment.yaml
 
+      - name: Validate Kubernetes Manifests
+        run: |
+          kubectl apply --dry-run=client --validate=true -f k8s/deployment.yaml
+          kubectl apply --dry-run=client --validate=true -f k8s/service.yaml
+          echo "Manifests validated successfully"
+
       - name: Deploy to Kubernetes
         run: |
           kubectl apply -f k8s/deployment.yaml
