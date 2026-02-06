@@ -2,7 +2,7 @@ const express = require('express');
 const { add, multiply, subtract, divide } = require('./utils/calculator');
 
 // Single place to change for demo: bump version when you deploy a new build
-const APP_VERSION = '1.0.0';
+const APP_VERSION = '1.0.1';
 
 const app = express();
 
