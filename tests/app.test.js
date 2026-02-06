@@ -17,11 +17,11 @@ describe('API Endpoints', () => {
   
   describe('GET /', () => {
     test('should return application information', async () => {
-      const response = await request(app).get('/');
+      const response = await request(app).get('/'); 
       
       expect(response.status).toBe(200);
       expect(response.body).toHaveProperty('message');
-      expect(response.body).toHaveProperty('version', '1.0.0');
+      expect(response.body).toHaveProperty('version', '1.0.1');
       expect(response.body).toHaveProperty('endpoints');
     });
   });
@@ -32,7 +32,7 @@ describe('API Endpoints', () => {
       
       expect(response.status).toBe(200);
       expect(response.body).toHaveProperty('application', 'DevSecOps Demo App');
-      expect(response.body).toHaveProperty('version', '1.0.0');
+      expect(response.body).toHaveProperty('version', '1.0.1');
       expect(response.body).toHaveProperty('features');
       expect(Array.isArray(response.body.features)).toBe(true);
     });
