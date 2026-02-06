@@ -1,6 +1,9 @@
 const express = require('express');
 const { add, multiply, subtract, divide } = require('./utils/calculator');
 
+// Single place to change for demo: bump version when you deploy a new build
+const APP_VERSION = '1.0.0';
+
 const app = express();
 
 // Middleware
@@ -32,7 +35,7 @@ app.get('/health', (req, res) => {
 app.get('/', (req, res) => {
   res.json({ 
     message: 'DevSecOps CI/CD Pipeline Demo Application',
-    version: '1.0.0',
+    version: APP_VERSION,
     endpoints: {
       health: '/health',
       calculate: '/calculate',
@@ -47,7 +50,7 @@ app.get('/', (req, res) => {
 app.get('/info', (req, res) => {
   res.json({
     application: 'DevSecOps Demo App',
-    version: '1.0.0',
+    version: APP_VERSION,
     description: 'Production-grade CI/CD pipeline with security scanning',
     features: [
       'SAST with CodeQL',

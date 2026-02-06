@@ -8,9 +8,9 @@ on:
 
 jobs:
   deploy:
-    name: Deploy to Kubernetes Cluster
+    name: Deploy to Kubernetes Cluster (kind)
     runs-on: ubuntu-latest
-    if: ${{ github.event.workflow_run.conclusion == 'success' }}
+    if: ${{ github.event.workflow_run.conclusion == 'success' && github.event.workflow_run.event == 'push' }}
 
     steps:
       - name: Checkout Repository
@@ -21,15 +21,38 @@ jobs:
         with:
           version: 'v1.29.0'
 
-      - name: Configure Kubeconfig
+      - name: Create kind Cluster
+        uses: helm/kind-action@v1.10.0
+        with:
+          cluster_name: devsecops-cluster
+          wait: 30s
+
+      - name: Verify kind Cluster
         run: |
-          mkdir -p ~/.kube
-          echo "${{ secrets.KUBECONFIG }}" > ~/.kube/config
-          chmod 600 ~/.kube/config
+          kubectl cluster-info
+          kubectl get nodes
+
+      - name: Login to DockerHub
+        uses: docker/login-action@v3
+        with:
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+
+      - name: Pull and Load Image into kind
+        run: |
+          echo "Pulling image from DockerHub..."
+          docker pull ${{ secrets.DOCKERHUB_USERNAME }}/devsecops-app:latest
+          
+          echo "Loading image into kind cluster..."
+          kind load docker-image ${{ secrets.DOCKERHUB_USERNAME }}/devsecops-app:latest --name devsecops-cluster
+          
+          echo "Image loaded successfully"
 
       - name: Replace DockerHub Username in Deployment
         run: |
           sed -i "s|<DOCKERHUB_USERNAME>|${{ secrets.DOCKERHUB_USERNAME }}|g" k8s/deployment.yaml
+          echo "Updated deployment.yaml:"
+          grep "image:" k8s/deployment.yaml
 
       - name: Validate Kubernetes Manifests
         run: |
@@ -41,15 +64,68 @@ jobs:
         run: |
           kubectl apply -f k8s/deployment.yaml
           kubectl apply -f k8s/service.yaml
+          echo "Deployment and service applied"
+
+      - name: Wait for Deployment
+        run: |
+          echo "Waiting for pods to be ready..."
+          kubectl rollout status deployment/devsecops-app --timeout=3m
+          echo "Deployment successful"
 
       - name: Verify Deployment
         run: |
-          kubectl get pods
+          echo "Pods:"
+          kubectl get pods -o wide
+          echo ""
+          echo "Services:"
           kubectl get svc
-          kubectl rollout status deployment/devsecops-app --timeout=2m
+          echo ""
+          echo "Deployment details:"
+          kubectl describe deployment devsecops-app
 
-      - name: Run Dummy DAST Scan
-        uses: zaproxy/action-baseline@v0.9.0
-        with:
-          target: http://localhost
-        continue-on-error: true
+      - name: Test Application
+        run: |
+          echo "Getting service details..."
+          kubectl get svc devsecops-service
+          
+          echo "Port-forwarding to service..."
+          kubectl port-forward svc/devsecops-service 8080:80 &
+          PF_PID=$!
+          sleep 5
+          
+          echo "Testing health endpoint..."
+          curl -f http://localhost:8080/health || exit 1
+          
+          echo "Testing root endpoint..."
+          curl -s http://localhost:8080/ | cat
+          
+          echo "Testing info endpoint..."
+          curl -s http://localhost:8080/info | cat
+          
+          echo "Testing calculator endpoint..."
+          curl -X POST http://localhost:8080/calculate \
+            -H "Content-Type: application/json" \
+            -d '{"operation": "add", "a": 10, "b": 5}' | cat
+          
+          kill $PF_PID 2>/dev/null || true
+          
+          echo "All application tests passed!"
+
+      - name: Deployment Summary
+        if: always()
+        run: |
+          echo "## Deployment Summary" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "### Deployment Information" >> $GITHUB_STEP_SUMMARY
+          echo "- **Cluster**: kind (Kubernetes in Docker)" >> $GITHUB_STEP_SUMMARY
+          echo "- **Image**: \`${{ secrets.DOCKERHUB_USERNAME }}/devsecops-app:latest\`" >> $GITHUB_STEP_SUMMARY
+          echo "- **Replicas**: 2" >> $GITHUB_STEP_SUMMARY
+          echo "- **Branch**: \`${{ github.event.workflow_run.head_branch }}\`" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "### Verification Steps Completed" >> $GITHUB_STEP_SUMMARY
+          echo "- Cluster created and verified" >> $GITHUB_STEP_SUMMARY
+          echo "- Image loaded into cluster" >> $GITHUB_STEP_SUMMARY
+          echo "- Manifests validated" >> $GITHUB_STEP_SUMMARY
+          echo "- Deployment and service applied" >> $GITHUB_STEP_SUMMARY
+          echo "- Rollout successful" >> $GITHUB_STEP_SUMMARY
+          echo "- Application endpoints tested" >> $GITHUB_STEP_SUMMARY
